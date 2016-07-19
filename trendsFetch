@@ -1,0 +1,96 @@
+/*
+--------------------------------------------------------------------------------------------------
+ Author: Przemysław Toś A.K.A. Scryt
+  "Trends Fetcher"
+--------------------------------------------------------------------------------------------------
+*/
+
+function getSheet(sheetName, createSheet) {
+  var configSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!configSheet) {
+    if (createSheet) {
+      configSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(sheetName);
+      deleteEmptyRows(configSheet, 2, 2);
+    } else {
+      alert('There is not "' + sheetName + '" sheet. Please add "' + sheetName + '" sheet with proper data');
+    }
+  }
+  return configSheet;
+}
+
+function alert(message) {
+  Logger.log(message);
+}
+
+function fetch() {
+  var ui = SpreadsheetApp.getUi();
+  var input = getSheet('input');
+  var output = getSheet('output');
+  var cfg = getSheet('cfg');
+  var noLinks = cfg.getRange(2,1).getValue();
+  var link = input.getRange(2,1,noLinks).getValues();
+  var lock = LockService.getScriptLock();
+  
+  var linkIndex = 0;
+  var noErrors = 0;
+  var noResaults = 0;
+  var rowIndex = 1; //"0" is reserved for name of the column
+  var noResLink = 1; //numering resaults from each link due to the fact that links does not always have same amount of data inside
+  var nextNumbers = 0; //loop purpose
+  
+  //clear spreadsheet & give a column name in first row
+  output.clear();
+
+  output.getRange(rowIndex,1).setValue('Phrase');
+  output.getRange(rowIndex,2).setValue('URL');
+  output.getRange(rowIndex,3).setValue('Position');
+  output.getRange(rowIndex,4).setValue('\%');
+  rowIndex++;
+  
+  for(;linkIndex<noLinks;linkIndex++){
+    var response = UrlFetchApp.fetch(link[linkIndex]).getContentText();
+    /*
+    Using regex (regular expresions) to get what we are intrested in, from source code.
+    XPath probably would be more suitable.
+    */
+    var regex = response.match(/(^\S.*\<)/gmi);
+    var rex = response.match(/(\+[0-9]+\%)|([0-9]+\<)/gmi);
+    
+    Logger.log(response);
+    
+    try{
+      var count = regex.length; //number of items in array
+      
+      for(; nextNumbers<count ; nextNumbers++){
+        output.getRange(rowIndex,1).setValue(regex[nextNumbers]);
+        output.getRange(rowIndex,2).setValue(link[linkIndex]);
+        
+        try{
+          output.getRange(rowIndex,4).setValue(rex[nextNumbers]);
+          
+          
+        }catch(err){
+          Logger.log(err);
+          
+        }
+        output.getRange(rowIndex,3).setValue(noResLink);
+        rowIndex++;
+        noResLink++;
+        
+      }
+      noResLink = 1; //counting number of resaults for current link
+      rowIndex++;
+      
+    }catch(err){
+      Logger.log(err);
+      noErrors++;
+      nextNumbers = 0;
+      
+    }
+    noResaults += nextNumbers;
+    nextNumbers = 0; //starting loop again for next link
+    
+  }
+  
+  ui.alert("Script completed: " + "\nLinks scraped: "+ linkIndex + "\nTotal results: " + noResaults + "\nErrors: " + noErrors);
+}
