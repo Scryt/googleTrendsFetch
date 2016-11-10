@@ -12,7 +12,7 @@ function getSheet(sheetName, createSheet) {
       configSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(sheetName);
       deleteEmptyRows(configSheet, 2, 2);
     } else {
-      alert('There is not "' + sheetName + '" sheet. Please add "' + sheetName + '" sheet with proper data');
+      alert('There is no "' + sheetName + '" sheet. Please add "' + sheetName + '" sheet with proper data');
     }
   }
   return configSheet;
